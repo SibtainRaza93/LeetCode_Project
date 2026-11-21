@@ -23,7 +23,12 @@ const register = async (req, res) => {
             { expiresIn: 60 * 60 }
         );
 
-        res.cookie("token", token, { maxAge: 60 * 60 * 1000, httpOnly: true });
+        res.cookie("token", token, {
+            maxAge: 60 * 60 * 1000,
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+        });
 
         res.status(201).send("User registered successfully");
     } catch (error) {
@@ -37,14 +42,48 @@ const login = async(req, res)=>{
         const {emailId, password} = req.body;
 
         if(!emailId){
-            throw Error("Invalid credential")
+            throw new Error("Invalid Credential")
         }
         if(!password){
-            throw Error("Invalid credential")
+            throw new Error("Invalid Credential")
         }
+
+        const user = await User.findOne({emailId});
+
+
+         if (!user) {
+            throw new Error("Invalid credentials");
+        }
+
+        const match = await bcrypt.compare(password, user.password);
+
+        if(!match){
+            throw new Error("Invalid Credential");
+        }
+
+        const token = jwt.sign(
+            { _id: user._id, emailId },
+            process.env.JWT_SECRET_KEY,
+            { expiresIn: 60 * 60 }
+        );
+
+        res.cookie("token", token, {
+            maxAge: 60 * 60 * 1000,
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+        });
+        res.status(201).send("Logged In Successfully")
+    } catch (error) {
+        res.status(401).send("Error: "+error)
+    }
+}
+
+const logout = async(req, res)=>{
+    try {
+        
     } catch (error) {
         
     }
 }
-
-export { register };
+export { register, login };
